@@ -63,7 +63,7 @@ class _MyAppState extends State<MyApp> {
         _isScanning = true;
       });
       if (_isBle) {
-        final results = await bluetoothManager.scan(timeout: const Duration(seconds: 10));
+        final results = await bluetoothManager.scan(timeout: const Duration(seconds: 20));
         devices.addAll(results);
         setState(() {});
       } else {
@@ -103,7 +103,7 @@ class _MyAppState extends State<MyApp> {
     setState(() {});
   }
 
-  void _print2X1() async {
+  void _print() async {
     if (selectedPrinter == null) return;
     final profile = await CapabilityProfile.load();
     final generator = Generator(PaperSize.mm58, profile, spaceBetweenRows: 0);
@@ -230,7 +230,7 @@ class _MyAppState extends State<MyApp> {
                             onPressed: selectedPrinter == null || device.name != selectedPrinter?.name
                                 ? null
                                 : () async {
-                              _print2X1();
+                              _print();
                             },
                             child: const Padding(
                               padding: EdgeInsets.symmetric(vertical: 2, horizontal: 20),
