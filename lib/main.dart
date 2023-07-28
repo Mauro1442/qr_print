@@ -111,39 +111,39 @@ class _MyAppState extends State<MyApp> {
     setState(() {});
   }
 
-  void _print() async {
-
+  void _print(int numberOfQRCodes) async {
     if (selectedPrinter == null) return;
 
-    Future<void> _performPrintWithImpressions(int numberOfImpressions) async {
-      final profile = await CapabilityProfile.load();
-      final generator = Generator(PaperSize.mm58, profile, spaceBetweenRows: 0);
-      List<int> bytes = [];
+    final profile = await CapabilityProfile.load();
+    final generator = Generator(PaperSize.mm58, profile, spaceBetweenRows: 0);
+    List<int> bytes = [];
 
-      //TODO Anadir texto para ticket
+    //TODO Anadir texto para ticket
 
+    for (int i = 0; i < _numberOfQRCodes; i++) {
       bytes += generator.qrcode('Buenas tardes',
           size: QRSize.Size8, cor: QRCorrection.L);
-
-      bytes += generator.feed(2);
-      bytes += generator.cut();
-
-      try {
-        if (!_isConnected) return;
-        for (int i = 0; i < numberOfImpressions; i++) {
-          final isSuccess =
-              await bluetoothManager.writeRawData(Uint8List.fromList(bytes));
-          if (isSuccess) {
-            setState(() {
-              _isConnected == true;
-            });
-          }
-        }
-      } on BTException catch (e) {
-        print(e);
-      }
     }
 
+    bytes += generator.feed(2);
+    bytes += generator.cut();
+
+    try {
+      if (!_isConnected) return;
+
+      final isSuccess =
+          await bluetoothManager.writeRawData(Uint8List.fromList(bytes));
+      if (isSuccess) {
+        setState(() {
+          _isConnected == true;
+        });
+      }
+    } on BTException catch (e) {
+      print(e);
+    }
+  }
+
+  void OpenWindow() async{
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -155,10 +155,10 @@ class _MyAppState extends State<MyApp> {
               DropdownButton<int>(
                 value: _numberOfQRCodes,
                 items: List.generate(10, (index) => index + 1)
-                    .map((numberOfQRCodes) {
+                    .map((_numberOfQRCodes) {
                   return DropdownMenuItem<int>(
-                    value: numberOfQRCodes,
-                    child: Text('Print: $numberOfQRCodes'),
+                    value: _numberOfQRCodes,
+                    child: Text('Print: $_numberOfQRCodes'),
                   );
                 }).toList(),
                 onChanged: (int? newValue) {
@@ -179,8 +179,7 @@ class _MyAppState extends State<MyApp> {
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(
-                    _numberOfQRCodes); // Close the dialog and pass the selected number of QR codes
+                _print(_numberOfQRCodes);
               },
               child: Text('Print $_numberOfQRCodes QR Codes'),
             ),
@@ -204,7 +203,7 @@ class _MyAppState extends State<MyApp> {
         _isConnecting = true; // Show CircularProgressIndicator
       });
 
-      await Future.delayed(const Duration(seconds: 8));
+      if (!_isScanning) await Future.delayed(const Duration(seconds: 8));
 
       // Attempt to connect to the device
       bool isConnected = await bluetoothManager.connect(
@@ -275,77 +274,62 @@ class _MyAppState extends State<MyApp> {
                       },
                     ),
                   ),
-                  OutlinedButton(
-                    onPressed: () {
-                      _scan();
-                    },
-                    child: const Padding(
-                      padding:
-                          EdgeInsets.symmetric(vertical: 2, horizontal: 20),
-                      child:
-                          Text("Scan for devices", textAlign: TextAlign.center),
-                    ),
-                  ),
-                  _isConnecting
-                      ? const CircularProgressIndicator() // Show CircularProgressIndicator while connecting
-                      : selectedPrinter != null
-                          ? Card(
-                              margin: const EdgeInsets.all(16),
-                              child: ListTile(
-                                title: Row(
-                                  children: [
-                                    Text(selectedPrinter!.name),
-                                    const SizedBox(width: 10),
-                                    _isConnected
+                  Card(
+                    margin: const EdgeInsets.all(16),
+                    child: selectedPrinter != null
+                        ? ListTile(
+                            title: Row(
+                              children: [
+                                Text(selectedPrinter!.name),
+                                const SizedBox(width: 10),
+                                _isConnecting
+                                    ? const CircularProgressIndicator()
+                                    : _isConnected
                                         ? const Icon(Icons.bluetooth_connected,
                                             color:
                                                 Colors.green) // Connected icon
                                         : const Icon(Icons.bluetooth_connected,
                                             color: Colors
                                                 .red), // Disconnected icon
+                              ],
+                            ),
+                            subtitle: Text(selectedPrinter!.address),
+                            trailing: OutlinedButton(
+                              onPressed: hasConnectedDevice
+                                  ? () async => OpenWindow()
+                                  : null,
+                              style: ButtonStyle(
+                                backgroundColor:
+                                    MaterialStateProperty.resolveWith<Color?>(
+                                        (states) {
+                                  return hasConnectedDevice
+                                      ? Colors.white
+                                      : Colors
+                                          .grey; // Change the button color when disabled
+                                }),
+                              ),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 2, horizontal: 20),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons
+                                        .print), // Add an icon to the button
+                                    SizedBox(
+                                        width:
+                                            8), // Add some space between the icon and the text
+                                    Text("Print", textAlign: TextAlign.center),
                                   ],
                                 ),
-                                subtitle: Text(selectedPrinter!.address),
-                                trailing: OutlinedButton(
-                                  onPressed: hasConnectedDevice
-                                      ? () async => _print()
-                                      : null,
-                                  style: ButtonStyle(
-                                    backgroundColor: MaterialStateProperty
-                                        .resolveWith<Color?>((states) {
-                                      return hasConnectedDevice
-                                          ? Colors.white
-                                          : Colors
-                                              .grey; // Change the button color when disabled
-                                    }),
-                                  ),
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                        vertical: 2, horizontal: 20),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons
-                                            .print), // Add an icon to the button
-                                        SizedBox(
-                                            width:
-                                                8), // Add some space between the icon and the text
-                                        Text("Print",
-                                            textAlign: TextAlign.center),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            )
-                          : const Card(
-                              // Replace this with a fallback UI or a message indicating no selected printer
-                              margin: EdgeInsets.all(16),
-                              child: ListTile(
-                                title: Text("No Printer Selected"),
-                                subtitle: Text("Please select a printer"),
                               ),
                             ),
+                          )
+                        : const ListTile(
+                            title: Text("No Printer Selected"),
+                            subtitle: Text("Please select a printer"),
+                          ),
+                  ),
                   _isScanning
                       ? const CircularProgressIndicator()
                       : Column(
@@ -379,6 +363,11 @@ class _MyAppState extends State<MyApp> {
               ),
             ),
           ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _isBle ? () => _scan() : null,
+          child: const Icon(Icons.bluetooth),
+          backgroundColor: _isBle ? Colors.blueAccent : Colors.grey,
         ),
       ),
     );
