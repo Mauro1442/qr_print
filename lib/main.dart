@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Image;
+
 import 'package:flutter_simple_bluetooth_printer/flutter_simple_bluetooth_printer.dart';
+
 import 'package:esc_pos_utils_plus/esc_pos_utils.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(const MaterialApp(
@@ -143,19 +145,19 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  void OpenWindow() async{
+  void openWindow() async {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Select Number of QR Codes'),
+          title: const Text('Select Number of QR Codes'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButton<int>(
                 value: _numberOfQRCodes,
                 items: List.generate(10, (index) => index + 1)
-                    .map((_numberOfQRCodes) {
+                    .map((numberOfQRCodes) {
                   return DropdownMenuItem<int>(
                     value: _numberOfQRCodes,
                     child: Text('Print: $_numberOfQRCodes'),
@@ -175,7 +177,7 @@ class _MyAppState extends State<MyApp> {
                 Navigator.of(context)
                     .pop(); // Close the dialog without printing
               },
-              child: Text('Exit'),
+              child: const Text('Exit'),
             ),
             TextButton(
               onPressed: () {
@@ -280,10 +282,17 @@ class _MyAppState extends State<MyApp> {
                         ? ListTile(
                             title: Row(
                               children: [
-                                Text(selectedPrinter!.name),
-                                const SizedBox(width: 10),
+                                Text(selectedPrinter!.name,
+                                    style: const TextStyle(fontSize: 14)),
+                                const SizedBox(width: 5),
                                 _isConnecting
-                                    ? const CircularProgressIndicator()
+                                    ? const SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
                                     : _isConnected
                                         ? const Icon(Icons.bluetooth_connected,
                                             color:
@@ -293,20 +302,20 @@ class _MyAppState extends State<MyApp> {
                                                 .red), // Disconnected icon
                               ],
                             ),
-                            subtitle: Text(selectedPrinter!.address),
+                            subtitle: Text(
+                              selectedPrinter!.address,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                             trailing: OutlinedButton(
                               onPressed: hasConnectedDevice
-                                  ? () async => OpenWindow()
+                                  ? () async => openWindow()
                                   : null,
                               style: ButtonStyle(
                                 backgroundColor:
-                                    MaterialStateProperty.resolveWith<Color?>(
-                                        (states) {
-                                  return hasConnectedDevice
-                                      ? Colors.white
-                                      : Colors
-                                          .grey; // Change the button color when disabled
-                                }),
+                                    MaterialStateProperty.all<Color>(
+                                        hasConnectedDevice
+                                            ? Colors.white
+                                            : Colors.grey),
                               ),
                               child: const Padding(
                                 padding: EdgeInsets.symmetric(
@@ -314,11 +323,8 @@ class _MyAppState extends State<MyApp> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons
-                                        .print), // Add an icon to the button
-                                    SizedBox(
-                                        width:
-                                            8), // Add some space between the icon and the text
+                                    Icon(Icons.print),
+                                    SizedBox(width: 8),
                                     Text("Print", textAlign: TextAlign.center),
                                   ],
                                 ),
@@ -366,8 +372,8 @@ class _MyAppState extends State<MyApp> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: _isBle ? () => _scan() : null,
-          child: const Icon(Icons.bluetooth),
           backgroundColor: _isBle ? Colors.blueAccent : Colors.grey,
+          child: const Icon(Icons.bluetooth),
         ),
       ),
     );
