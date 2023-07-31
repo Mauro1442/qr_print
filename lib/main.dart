@@ -24,15 +24,15 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  var bluetoothManager = FlutterSimpleBluetoothPrinter.instance;
-  var _isScanning = false;
-  var _isConnecting = false;
-  var _isBle = true;
-  var _isConnected = false;
-  var devices = <BluetoothDevice>[];
+  final FlutterSimpleBluetoothPrinter bluetoothManager =
+      FlutterSimpleBluetoothPrinter.instance;
+  bool _isScanning = false;
+  bool _isConnecting = false;
+  bool _isBle = true;
+  bool _isConnected = false;
+  List<BluetoothDevice> devices = [];
 
   StreamSubscription<BTConnectState>? _subscriptionBtStatus;
-  BTConnectState _currentStatus = BTConnectState.disconnect;
 
   BluetoothDevice? selectedPrinter;
 
@@ -46,7 +46,7 @@ class _MyAppState extends State<MyApp> {
     // subscription to listen change status of bluetooth connection
     _subscriptionBtStatus = bluetoothManager.connectState.listen((status) {
       print(' ----------------- status bt $status ------------------ ');
-      _currentStatus = status;
+
       if (status == BTConnectState.connected) {
         setState(() {
           _isConnected = true;
@@ -139,7 +139,7 @@ class _MyAppState extends State<MyApp> {
           await bluetoothManager.writeRawData(Uint8List.fromList(bytes));
       if (isSuccess) {
         setState(() {
-          _isConnected == true;
+          _isConnected = true;
         });
       }
     } on BTException catch (e) {
@@ -300,8 +300,7 @@ class _MyAppState extends State<MyApp> {
                                       )
                                     : _isConnected
                                         ? const Icon(Icons.bluetooth_connected,
-                                            color:
-                                                Colors.green) // Connected icon
+                                            color: Colors.green)
                                         : const Icon(Icons.bluetooth_connected,
                                             color: Colors
                                                 .red), // Disconnected icon
@@ -350,7 +349,6 @@ class _MyAppState extends State<MyApp> {
                                   title: Text(device.name),
                                   subtitle: Text(device.address),
                                   onTap: () {
-                                    // do something
                                     selectDevice(device);
                                   },
                                   trailing: OutlinedButton(
