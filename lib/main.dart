@@ -8,6 +8,8 @@ import 'package:flutter_simple_bluetooth_printer/flutter_simple_bluetooth_printe
 import 'package:esc_pos_utils_plus/esc_pos_utils.dart';
 import 'package:flutter/services.dart';
 
+final List<int> maxNumQr = <int>[1, 2, 3, 4, 5];
+
 void main() {
   runApp(const MaterialApp(
     home: MyApp(),
@@ -34,7 +36,7 @@ class _MyAppState extends State<MyApp> {
 
   BluetoothDevice? selectedPrinter;
 
-  int _numberOfQRCodes = 1;
+  int _numberOfQRCodes = maxNumQr.first;
 
   @override
   void initState() {
@@ -113,7 +115,7 @@ class _MyAppState extends State<MyApp> {
     setState(() {});
   }
 
-  void _print(int numberOfQRCodes) async {
+  void _print(int howMany) async {
     if (selectedPrinter == null) return;
 
     final profile = await CapabilityProfile.load();
@@ -151,25 +153,28 @@ class _MyAppState extends State<MyApp> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Select Number of QR Codes'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButton<int>(
-                value: _numberOfQRCodes,
-                items: List.generate(10, (index) => index + 1)
-                    .map((numberOfQRCodes) {
-                  return DropdownMenuItem<int>(
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButton<int>(
                     value: _numberOfQRCodes,
-                    child: Text('Print: $_numberOfQRCodes'),
-                  );
-                }).toList(),
-                onChanged: (int? newValue) {
-                  setState(() {
-                    _numberOfQRCodes = newValue ?? 1;
-                  });
-                },
-              ),
-            ],
+                    onChanged: (int? value) {
+                      setState(() {
+                        _numberOfQRCodes = value!;
+                      });
+                    },
+                    items: maxNumQr.map<DropdownMenuItem<int>>((int value) {
+                      return DropdownMenuItem<int>(
+                        value: value,
+                        child: Text('To print: $value'),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              );
+            },
           ),
           actions: [
             TextButton(
@@ -183,7 +188,7 @@ class _MyAppState extends State<MyApp> {
               onPressed: () {
                 _print(_numberOfQRCodes);
               },
-              child: Text('Print $_numberOfQRCodes QR Codes'),
+              child: const Text('Print QR Codes'),
             ),
           ],
         );
