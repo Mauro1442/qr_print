@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart' hide Image;
 
@@ -28,9 +27,10 @@ class _MyAppState extends State<MyApp> {
       FlutterSimpleBluetoothPrinter.instance;
   bool _isScanning = false;
   bool _isConnecting = false;
-  bool _isBle = true;
   bool _isConnected = false;
-  List<BluetoothDevice> devices = [];
+
+  List<BluetoothDevice> scannedDevices = [];
+  List<BluetoothDevice> bondedDevices = [];
 
   StreamSubscription<BTConnectState>? _subscriptionBtStatus;
 
@@ -42,6 +42,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _discovery();
+    _getBondedDevices();
 
     // subscription to listen change status of bluetooth connection
     _subscriptionBtStatus = bluetoothManager.connectState.listen((status) {
@@ -61,6 +62,17 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  Future<void> _getBondedDevices() async {
+    try {
+      final List<BluetoothDevice> bonded = await bluetoothManager.getAndroidPairedDevices();
+      setState(() {
+        bondedDevices = bonded;
+      });
+    } on BTException catch (e) {
+      print(e);
+    }
+  }
+
   @override
   void dispose() {
     _subscriptionBtStatus?.cancel();
@@ -68,21 +80,20 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _scan() async {
-    devices.clear();
+    scannedDevices.clear();
     try {
       setState(() {
         _isScanning = true;
       });
-      if (_isBle) {
-        final results =
-            await bluetoothManager.scan(timeout: const Duration(seconds: 20));
-        devices.addAll(results);
-        setState(() {});
-      } else {
-        final bondedDevices = await bluetoothManager.getAndroidPairedDevices();
-        devices.addAll(bondedDevices);
-        setState(() {});
-      }
+
+      final results =
+          await bluetoothManager.scan(timeout: const Duration(seconds: 20));
+
+
+      scannedDevices.addAll(results);
+
+
+      setState(() {});
     } on BTException catch (e) {
       print(e);
     } finally {
@@ -93,10 +104,11 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _discovery() {
-    devices.clear();
+    scannedDevices.clear(); // Clear scanned devices
     try {
       bluetoothManager.discovery().listen((device) {
-        devices.add(device);
+        scannedDevices
+            .add(device); // Add scanned device to the scannedDevices list
         setState(() {});
       });
     } on BTException catch (e) {
@@ -260,29 +272,8 @@ class _MyAppState extends State<MyApp> {
               padding: EdgeInsets.zero,
               child: Column(
                 children: [
-                  Visibility(
-                    visible: Platform.isAndroid,
-                    child: SwitchListTile.adaptive(
-                      contentPadding:
-                          const EdgeInsets.only(bottom: 20.0, left: 20),
-                      title: const Text(
-                        "BLE (low energy)",
-                        textAlign: TextAlign.start,
-                        style: TextStyle(fontSize: 19.0),
-                      ),
-                      value: _isBle,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          _isBle = value ?? false;
-                          _isConnected = false;
-                          selectedPrinter = null;
-                          _scan();
-                        });
-                      },
-                    ),
-                  ),
                   Card(
-                    margin: const EdgeInsets.all(16),
+                    margin: const EdgeInsetsDirectional.fromSTEB(16, 32, 16, 24),
                     child: selectedPrinter != null
                         ? ListTile(
                             title: Row(
@@ -302,8 +293,7 @@ class _MyAppState extends State<MyApp> {
                                         ? const Icon(Icons.bluetooth_connected,
                                             color: Colors.green)
                                         : const Icon(Icons.bluetooth_connected,
-                                            color: Colors
-                                                .red), // Disconnected icon
+                                            color: Colors.red), // Disconnected icon
                               ],
                             ),
                             subtitle: Text(
@@ -318,8 +308,12 @@ class _MyAppState extends State<MyApp> {
                                 backgroundColor:
                                     MaterialStateProperty.all<Color>(
                                         hasConnectedDevice
-                                            ? Colors.white
-                                            : Colors.grey),
+                                            ? Colors.blueAccent
+                                            : Colors.white),
+                                foregroundColor: MaterialStateProperty.all<Color>(
+                                    hasConnectedDevice
+                                        ? Colors.white
+                                        : Colors.grey),
                               ),
                               child: const Padding(
                                 padding: EdgeInsets.symmetric(
@@ -340,42 +334,131 @@ class _MyAppState extends State<MyApp> {
                             subtitle: Text("Please select a printer"),
                           ),
                   ),
-                  _isScanning
-                      ? const CircularProgressIndicator()
-                      : Column(
-                          children: devices
-                              .map(
-                                (device) => ListTile(
-                                  title: Text(device.name),
-                                  subtitle: Text(device.address),
-                                  onTap: () {
-                                    selectDevice(device);
-                                  },
-                                  trailing: OutlinedButton(
-                                    onPressed: selectedPrinter == null ||
-                                            device.name != selectedPrinter?.name
-                                        ? null
-                                        : () async {
-                                            _connectDevice();
-                                          },
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                          vertical: 2, horizontal: 20),
-                                      child: Text("Connect",
-                                          textAlign: TextAlign.center),
-                                    ),
+                  Card(
+                    margin: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16.0),
+                          child: const Text(
+                            'Bonded Devices',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold, // Color of the title text
+                            ),
+                          ),
+                        ),
+                        const Divider(),
+                        ListView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          shrinkWrap: true,
+                          itemCount: bondedDevices.length,
+                          itemBuilder: (context, index) {
+                            BluetoothDevice device = bondedDevices[index];
+                            return ListTile(
+                              title: Text(device.name),
+                              subtitle: Text(device.address),
+                              onTap: () {
+                                selectDevice(device);
+                              },
+                              trailing: OutlinedButton(
+                                style: ButtonStyle(
+                                  shape:MaterialStateProperty.all<RoundedRectangleBorder>(
+                                      RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(18.0),
+                                          side: BorderSide(color: Colors.red)
+                                      )
+                                  )
+                                ),
+                                onPressed: selectedPrinter == null ||
+                                    device.name != selectedPrinter?.name
+                                    ? null
+                                    : () async {
+                                  _connectDevice();
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 2, horizontal: 20),
+                                  child: Text("connect",
+                                      textAlign: TextAlign.center,
                                   ),
                                 ),
-                              )
-                              .toList()),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  Card(
+                    margin: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16.0),
+                          child: const Text(
+                            'Scanned Devices',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold, // Color of the title text
+                            ),
+                          ),
+                        ),
+                        const Divider(),
+                        _isScanning ? const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: CircularProgressIndicator(),
+                        ) :
+                        ListView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          shrinkWrap: true,
+                          itemCount: scannedDevices.length,
+                          itemBuilder: (context, index) {
+                            BluetoothDevice device = scannedDevices[index];
+                            return ListTile(
+                              title: Text(device.name),
+                              subtitle: Text(device.address),
+                              onTap: () {
+                                selectDevice(device);
+                              },
+                              trailing: OutlinedButton(
+                                style: ButtonStyle(
+                                    shape:MaterialStateProperty.all<RoundedRectangleBorder>(
+                                        RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(18.0),
+                                            side: BorderSide(color: Colors.red)
+                                        )
+                                    )
+                                ),
+                                onPressed: selectedPrinter == null ||
+                                    device.name != selectedPrinter?.name
+                                    ? null
+                                    : () async {
+                                  _connectDevice();
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 2, horizontal: 20),
+                                  child: Text("Connect",
+                                      textAlign: TextAlign.center),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: _isBle ? () => _scan() : null,
-          backgroundColor: _isBle ? Colors.blueAccent : Colors.grey,
+          onPressed: !_isScanning ? () => _scan() : null,
+          backgroundColor: !_isScanning ? Colors.blueAccent : Colors.grey,
           child: const Icon(Icons.bluetooth),
         ),
       ),

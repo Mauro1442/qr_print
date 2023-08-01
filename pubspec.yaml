@@ -36,15 +36,15 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
   esc_pos_utils_plus: ^2.0.2
-  # flutter_simple_bluetooth_printer: ^0.1.4
+  flutter_simple_bluetooth_printer: ^0.1.4
 
   # How to add github packages:
   # you must make sure that the package is in the root of the package, not inside any folder or file
   # then add the name of the package[ inside the pubspec.yaml ]
   # then copy the url of the repository and the specifications you want[ branch, commit, fork... ]
-  flutter_simple_bluetooth_printer:
-    git:
-      url: https://github.com/jomodeDEV/flutter_simple_bluetooth_printer.git
+#  flutter_simple_bluetooth_printer:
+#    git:
+#      url: https://github.com/jomodeDEV/flutter_simple_bluetooth_printer.git
 
 
 dev_dependencies:
